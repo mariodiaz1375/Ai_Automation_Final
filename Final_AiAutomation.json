@@ -1,0 +1,1113 @@
+{
+  "name": "Presupuestos por email con aprobacion humana",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "subject:(presupuesto OR cotizacion OR cotización) -from:me",
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "id": "94aa197e-19ab-4e02-b49a-94a712cab764",
+      "name": "Correo de cliente",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -112,
+        128
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LqYZ3nt68eFdYInn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Correo del cliente\nDe: {{ $json.from.text }}\nAsunto: {{ $json.subject }}\n\n{{ $json.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Eres un asistente comercial que arma presupuestos. Lee el correo del cliente, identifica los sistemas informaticos y modulos de software adicionales solicitados. Usa SIEMPRE las herramientas buscar_sistemas y buscar_modulos para obtener precios reales de Airtable; nunca inventes precios. Si un item no existe en las tablas, no lo presupuestes y listalo en \"faltantes\". Regla de precios de sistemas informaticos: el precio de la tabla corresponde a un bloque de PCs, cuyo tamano indica la columna \"Cantidad de PCs\" (5 PCs). Se cobra por bloques completos, redondeando siempre hacia arriba: bloques = techo(PCs pedidas / Cantidad de PCs), y precio del sistema = precio de la tabla x bloques. Ejemplos: 1 a 5 PCs = precio x 1; 6 a 10 PCs = precio x 2; 15 PCs = precio x 3; 23 PCs = precio x 5 (se cobra el bloque completo aunque se pase por poco del rango anterior). Si el cliente no indica la cantidad de PCs, no la inventes: listalo en \"faltantes\". Aclara en el correo la cantidad de PCs pedida, la cantidad de bloques y el calculo. Todos los precios de las tablas estan en dolares estadounidenses (USD): expresa todos los importes y el total en USD (por ejemplo \"USD 520\") y usa siempre \"USD\" en el campo moneda; nunca indiques que la moneda esta pendiente de confirmar. Calcula cantidades, subtotales y total. En los campos sistemas_ids y modulos_ids devuelve los IDs de registro de Airtable (el campo id que empieza con rec, tal como lo devuelven buscar_sistemas y buscar_modulos) unicamente de los sistemas y modulos que efectivamente incluiste en el presupuesto, sin repetir; si no incluiste ninguno devuelve una lista vacia. Nunca inventes IDs. Redacta un correo profesional en espanol (HTML) dirigido al cliente con el detalle y el total. No lo envies: un humano lo revisara."
+        }
+      },
+      "id": "d6a114c0-9fc1-43d9-b7d2-00f248043126",
+      "name": "Redactar presupuesto",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        272,
+        64
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-6.1-sol",
+          "cachedResultName": "GPT-6.1 Sol"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "1900c2cb-53ae-4fa1-b538-21de8f382c31",
+      "name": "Modelo OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        144,
+        288
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "Gateway credits",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appB5lmWKysxSGIQd",
+          "mode": "list",
+          "cachedResultName": "Catálogo de Sistemas y Módulos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbllQkAOT9IOVbo5l",
+          "mode": "list",
+          "cachedResultName": "Sistemas Informáticos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd/tbllQkAOT9IOVbo5l"
+        },
+        "filterByFormula": "={{ $fromAI('formula', `Formula de Airtable para filtrar registros por nombre; vacio devuelve todos`, 'string') }}",
+        "returnAll": false,
+        "limit": 30,
+        "options": {}
+      },
+      "id": "f477cc4b-bf31-4d5b-85a1-cb7130346d80",
+      "name": "buscar_sistemas",
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        272,
+        288
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "9ArAL70NAaFc62bq",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appB5lmWKysxSGIQd",
+          "mode": "list",
+          "cachedResultName": "Catálogo de Sistemas y Módulos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl8yjwhgXR1szleM",
+          "mode": "list",
+          "cachedResultName": "Módulos Adicionales",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd/tbl8yjwhgXR1szleM"
+        },
+        "filterByFormula": "={{ $fromAI('formula', `Formula de Airtable para filtrar registros por nombre; vacio devuelve todos`, 'string') }}",
+        "returnAll": false,
+        "limit": 30,
+        "options": {}
+      },
+      "id": "44734453-06a4-4f2f-87ca-95f189aff78e",
+      "name": "buscar_modulos",
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        288
+      ],
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "9ArAL70NAaFc62bq",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\"asunto\":\"Presupuesto - Sistema X\",\"cuerpo_html\":\"<p>Estimado/a...</p>\",\"resumen_items\":\"1x Sistema A (USD 1000); 1x Modulo B (USD 200)\",\"total\":1200,\"moneda\":\"USD\",\"faltantes\":\"items no encontrados en las tablas o vacio\",\"sistemas_ids\":[\"recXXXXXXXXXXXXXX\"],\"modulos_ids\":[\"recYYYYYYYYYYYYYY\"]}"
+      },
+      "id": "becc855f-2446-4b26-adf5-700862999606",
+      "name": "Formato del presupuesto",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "mariodiaz1375@gmail.com",
+        "subject": "=Error al armar presupuesto: {{ $(\"Correo de cliente\").item.json.subject }}",
+        "message": "=El agente no pudo armar el presupuesto tras 3 intentos.\n\nCliente: {{ $(\"Correo de cliente\").item.json.from.text }}\nAsunto: {{ $(\"Correo de cliente\").item.json.subject }}\n\nError: {{ $json.error?.message || \"sin detalle\" }}\n\nConsulta original:\n{{ $(\"Correo de cliente\").item.json.text }}\n\nEl correo se marco como leido para no reprocesarlo. Hay que responder al cliente a mano.",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "b06c04d4-5bea-475e-b467-4ea8892ac018",
+      "name": "Avisar error del agente",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        416
+      ],
+      "webhookId": "a27f33dc-e24c-4797-8eb7-2f2d8e75840b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LqYZ3nt68eFdYInn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $(\"Correo de cliente\").item.json.id }}"
+      },
+      "id": "4cab64d0-57d1-47fb-8d11-24c30d0092ff",
+      "name": "Marcar correo con error como leido",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        416
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "webhookId": "3b7c49a7-0fb2-4d58-955f-c638e6c67f2e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LqYZ3nt68eFdYInn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appB5lmWKysxSGIQd",
+          "mode": "list",
+          "cachedResultName": "Catálogo de Sistemas y Módulos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblGwXAdEE8SjzIVm",
+          "mode": "list",
+          "cachedResultName": "Presupuestos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd/tblGwXAdEE8SjzIVm"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nombre del Cliente": "={{ $(\"Correo de cliente\").item.json.from.value[0].name || $(\"Correo de cliente\").item.json.from.value[0].address }}",
+            "Email del Cliente": "={{ $(\"Correo de cliente\").item.json.from.value[0].address }}",
+            "Consulta del Cliente": "={{ $(\"Correo de cliente\").item.json.text }}",
+            "Presupuesto Generado": "={{ $json.output.cuerpo_html }}",
+            "Monto Total": "={{ $json.output.total }}",
+            "Estado": "Pendiente"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID Presupuesto",
+              "displayName": "ID Presupuesto",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Nombre del Cliente",
+              "displayName": "Nombre del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email del Cliente",
+              "displayName": "Email del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Consulta del Cliente",
+              "displayName": "Consulta del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Presupuesto Generado",
+              "displayName": "Presupuesto Generado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Monto Total",
+              "displayName": "Monto Total",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha de Envío",
+              "displayName": "Fecha de Envío",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Pendiente",
+                  "value": "Pendiente"
+                },
+                {
+                  "name": "Enviado",
+                  "value": "Enviado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Aprobado",
+              "displayName": "Aprobado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sistemas Elegidos",
+              "displayName": "Sistemas Elegidos",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Módulos Elegidos",
+              "displayName": "Módulos Elegidos",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "ecb406c3-0fe7-4fd7-9e90-b5f2f5b1eaeb",
+      "name": "Guardar presupuesto pendiente",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        224
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "9ArAL70NAaFc62bq",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $(\"Correo de cliente\").item.json.id }}"
+      },
+      "id": "f6f78e01-69a2-45aa-8a73-aa3946063bfc",
+      "name": "Marcar correo como leido",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        224
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "webhookId": "89e7942d-63b7-4db6-a983-9259e512f930",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LqYZ3nt68eFdYInn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "mariodiaz1375@gmail.com",
+        "subject": "=Aprobar presupuesto: {{ $(\"Redactar presupuesto\").item.json.output.asunto }}",
+        "message": "=Cliente: {{ $(\"Correo de cliente\").item.json.from.text }}\n\nTotal: {{ $(\"Redactar presupuesto\").item.json.output.total }} {{ $(\"Redactar presupuesto\").item.json.output.moneda }}\nItems: {{ $(\"Redactar presupuesto\").item.json.output.resumen_items }}\nFaltantes: {{ $(\"Redactar presupuesto\").item.json.output.faltantes }}\n\nBorrador del correo:\n{{ $(\"Redactar presupuesto\").item.json.output.cuerpo_html }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "approveLabel": "Aprobar y enviar",
+            "disapproveLabel": "Rechazar"
+          }
+        },
+        "options": {}
+      },
+      "id": "7aee1387-aa5a-4d64-a7b0-53258a24f8da",
+      "name": "Pedir aprobacion humana",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        224
+      ],
+      "webhookId": "57da46b8-8d5e-4848-98fd-805932d6becf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LqYZ3nt68eFdYInn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "approved",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9e0d3981-8cb5-4777-82ea-43a37b8bdd18",
+      "name": "Aprobado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1488,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $(\"Correo de cliente\").item.json.from.value[0].address }}",
+        "subject": "={{ $(\"Redactar presupuesto\").item.json.output.asunto }}",
+        "message": "={{ $(\"Redactar presupuesto\").item.json.output.cuerpo_html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "68aedbfd-2dfa-4ce8-af7a-56c0916457f0",
+      "name": "Enviar presupuesto al cliente",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1856,
+        -32
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "webhookId": "580336d9-7dc7-473f-b903-cec6c5942678",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "LqYZ3nt68eFdYInn",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appB5lmWKysxSGIQd",
+          "mode": "list",
+          "cachedResultName": "Catálogo de Sistemas y Módulos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblGwXAdEE8SjzIVm",
+          "mode": "list",
+          "cachedResultName": "Presupuestos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd/tblGwXAdEE8SjzIVm"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $(\"Guardar presupuesto pendiente\").item.json.id }}",
+            "Estado": "Enviado",
+            "Aprobado": true,
+            "Fecha de Envío": "={{ $now.toISO() }}",
+            "Sistemas Elegidos": "={{ $(\"Redactar presupuesto\").item.json.output.sistemas_ids || [] }}",
+            "Módulos Elegidos": "={{ $(\"Redactar presupuesto\").item.json.output.modulos_ids || [] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true
+            },
+            {
+              "id": "ID Presupuesto",
+              "displayName": "ID Presupuesto",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Nombre del Cliente",
+              "displayName": "Nombre del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email del Cliente",
+              "displayName": "Email del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Consulta del Cliente",
+              "displayName": "Consulta del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Presupuesto Generado",
+              "displayName": "Presupuesto Generado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Monto Total",
+              "displayName": "Monto Total",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha de Envío",
+              "displayName": "Fecha de Envío",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Pendiente",
+                  "value": "Pendiente"
+                },
+                {
+                  "name": "Enviado",
+                  "value": "Enviado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Aprobado",
+              "displayName": "Aprobado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sistemas Elegidos",
+              "displayName": "Sistemas Elegidos",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Módulos Elegidos",
+              "displayName": "Módulos Elegidos",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "9e7034b4-24cc-4917-8797-2e450078d5ef",
+      "name": "Marcar presupuesto enviado",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2080,
+        -32
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "9ArAL70NAaFc62bq",
+          "name": "Airtable account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "airtableOAuth2Api",
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appB5lmWKysxSGIQd",
+          "mode": "list",
+          "cachedResultName": "Catálogo de Sistemas y Módulos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblGwXAdEE8SjzIVm",
+          "mode": "list",
+          "cachedResultName": "Presupuestos",
+          "cachedResultUrl": "https://airtable.com/appB5lmWKysxSGIQd/tblGwXAdEE8SjzIVm"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $(\"Guardar presupuesto pendiente\").item.json.id }}",
+            "Estado": "Rechazado"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true
+            },
+            {
+              "id": "ID Presupuesto",
+              "displayName": "ID Presupuesto",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Nombre del Cliente",
+              "displayName": "Nombre del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email del Cliente",
+              "displayName": "Email del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Consulta del Cliente",
+              "displayName": "Consulta del Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Presupuesto Generado",
+              "displayName": "Presupuesto Generado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Monto Total",
+              "displayName": "Monto Total",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha de Envío",
+              "displayName": "Fecha de Envío",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Pendiente",
+                  "value": "Pendiente"
+                },
+                {
+                  "name": "Enviado",
+                  "value": "Enviado"
+                },
+                {
+                  "name": "Rechazado",
+                  "value": "Rechazado"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Aprobado",
+              "displayName": "Aprobado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "ec401fab-adbd-43bc-a3ee-ef277b3e0e52",
+      "name": "Marcar presupuesto rechazado",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1952,
+        416
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "airtableOAuth2Api": {
+          "id": "9ArAL70NAaFc62bq",
+          "name": "Airtable account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Correo de cliente": {
+      "main": [
+        [
+          {
+            "node": "Redactar presupuesto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redactar presupuesto": {
+      "main": [
+        [
+          {
+            "node": "Guardar presupuesto pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar error del agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo OpenAI": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redactar presupuesto",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_sistemas": {
+      "ai_tool": [
+        [
+          {
+            "node": "Redactar presupuesto",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar_modulos": {
+      "ai_tool": [
+        [
+          {
+            "node": "Redactar presupuesto",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formato del presupuesto": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Redactar presupuesto",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Avisar error del agente": {
+      "main": [
+        [
+          {
+            "node": "Marcar correo con error como leido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar presupuesto pendiente": {
+      "main": [
+        [
+          {
+            "node": "Marcar correo como leido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar correo como leido": {
+      "main": [
+        [
+          {
+            "node": "Pedir aprobacion humana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedir aprobacion humana": {
+      "main": [
+        [
+          {
+            "node": "Aprobado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aprobado?": {
+      "main": [
+        [
+          {
+            "node": "Enviar presupuesto al cliente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Marcar presupuesto rechazado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar presupuesto al cliente": {
+      "main": [
+        [
+          {
+            "node": "Marcar presupuesto enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "errorWorkflow": "rFGAD2wj3q2wqOz1"
+  },
+  "versionId": "c2650c5f-2bfd-43b2-b900-07563f2b013c",
+  "meta": {
+    "instanceId": "5111bc3fdf9f131f2ca22dc55412bea240688693e8c15db37ad60a349c060e3c"
+  },
+  "nodeGroups": [
+    {
+      "id": "c56d4b44-5705-4516-8ff5-18c9662dc38d",
+      "name": "Armar presupuesto",
+      "nodeIds": [
+        "d6a114c0-9fc1-43d9-b7d2-00f248043126",
+        "1900c2cb-53ae-4fa1-b538-21de8f382c31",
+        "f477cc4b-bf31-4d5b-85a1-cb7130346d80",
+        "44734453-06a4-4f2f-87ca-95f189aff78e",
+        "becc855f-2446-4b26-adf5-700862999606"
+      ],
+      "description": "Lee el correo del cliente y arma el presupuesto con los precios de las tablas de Airtable"
+    },
+    {
+      "id": "9a51ce82-f600-4fef-929b-c39c21e18659",
+      "name": "Guardar y revisar",
+      "nodeIds": [
+        "ecb406c3-0fe7-4fd7-9e90-b5f2f5b1eaeb",
+        "f6f78e01-69a2-45aa-8a73-aa3946063bfc",
+        "7aee1387-aa5a-4d64-a7b0-53258a24f8da",
+        "9e0d3981-8cb5-4777-82ea-43a37b8bdd18"
+      ],
+      "description": "Guarda el borrador como pendiente en Airtable y espera la aprobacion o rechazo de un humano"
+    },
+    {
+      "id": "64370312-546e-4afa-b064-8c143fb67229",
+      "name": "Atender error del agente",
+      "nodeIds": [
+        "b06c04d4-5bea-475e-b467-4ea8892ac018",
+        "4cab64d0-57d1-47fb-8d11-24c30d0092ff"
+      ],
+      "description": "Si el agente falla tras 3 intentos, te avisa por correo con la consulta original y evita reprocesarla"
+    },
+    {
+      "id": "22ce662e-2b47-4e2d-9013-9709e787ae63",
+      "name": "Enviar al cliente",
+      "nodeIds": [
+        "68aedbfd-2dfa-4ce8-af7a-56c0916457f0",
+        "9e7034b4-24cc-4917-8797-2e450078d5ef"
+      ],
+      "description": "Si fue aprobado, envia el presupuesto al cliente y actualiza su estado en Airtable"
+    }
+  ],
+  "id": "VtnNt6aYdG6miomU",
+  "tags": []
+}
